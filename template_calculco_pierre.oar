@@ -1,0 +1,59 @@
+#!/bin/bash
+
+#OAR --name mon_super_job_oar
+#OAR --resource /core=30,walltime=10:00:00
+#OAR --queue default
+#OAR --property host='orval09'
+#OAR --type besteffort
+#OAR --notify mail:kinan.3bbas@gmail.com
+
+# Charger Matlab
+source /nfs/opt/env/env.sh
+module load matlab
+#OAR -t token:matlab=1
+
+# Variables
+
+
+GROUP=$(id -gn $OAR_USER)
+SCRATCHDIR=/scratch/$GROUP/$OAR_USER/$OAR_JOB_NAME.$OAR_JOBID
+
+# Fonctions
+travailler_dans_le_scratch () {
+	echo "Travailler dans le scratch"
+	[ ! -d $SCRATCHDIR ] && mkdir $SCRATCHDIR 
+	cd $SCRATCHDIR
+}
+
+copier_les_scripts_vers_le_scratch () {
+	echo "Copier les scripts vers le scratch"
+	cp -r $OAR_WORKDIR/* .
+}
+
+copier_les_donnees_vers_le_scratch () {
+	echo "Copier les donnees vers le scratch"
+	cp /nfs/data/$GROUP/$OAR_USER/donnees.csv .
+}
+
+sauvegarder_les_resultats () {
+	echo "Sauvegarder les résulats"
+	cp resultats.txt $OAR_WORKDIR
+}
+
+nettoyer_le_scratch () {
+	echo "Nettoyer le scratch"
+#	rm -rfv .
+}
+
+main (){
+	travailler_dans_le_scratch
+	copier_les_scripts_vers_le_scratch
+	
+	
+	./Experiment_CAVE.sh
+	
+
+	nettoyer_le_scratch
+}
+
+main

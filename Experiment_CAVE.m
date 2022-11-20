@@ -1,0 +1,80 @@
+%% Cleaning and loading everthing to the path
+close all;
+clear;
+run_me_first;
+
+%% Setting parameters for the expirement
+
+% Parameters for KPWNMF
+num_band=16; %    %number of bands
+sz=[500 ,500];     %image size
+smp_scenario=1; %sampling operator, 1=binary, 2=random projections, 3=filter based
+num_obs_pxl=1; %  %number of exposures
+WNMF_params.WNMF_Offset=sqrt(num_band); % Dimensions of the patch
+WNMF_params.rank=1;% rank of the patch
+WNMF_params.Iter_max_E_step=25; % Number of iteration for the E step in Expectation Maximization algorithm
+WNMF_params.Iter_max_M_step=1; % Number of iteration for the M step in Expectation Maximization algorithm
+WNMF_params.Nesterov_Max_Iterations=1000;
+WNMF_params.Nesterov_Min_Iterations=10;
+WNMF_params.beta=0; %% Used to control graph regularization and L1,L2 norms with nmf
+% WNMF_params.Step_size=floor(WNMF_params.WNMF_Offset/2)-1; %%uncomment
+% WNMF_params.Step_size=1; % Uncomment this line if you need overlaps
+% between the patches
+WNMF_params.Step_size=WNMF_params.WNMF_Offset;
+WNMF_params.Scaling=false; % To apply sum to one constrain on the rows of G (Abandunces Matrix) in Nesterov
+WNMF_params.I_WB_Initialization=true ; % To use the output of the WB algorithm as input
+unmixing_rank=WNMF_params.rank; % Rank for the entire image
+% unmixing=true; % put it to ture if you want to test unmixing after democaising
+dataset_size=32;% the number of used images in the dataset
+WNMF_params.Kmeans=true;% True = Kmeans for clustering; false= VCA for selecting the endmemebers
+WNMF_params.Kmeans_cut=5;   %null for no cut, 1 for cut on the mean, 2 for cut on the sqrt of the mean, 3 half of the mean, 4 median, 5 the first 100 element
+
+unmixing=false; %Ture, if you want to test unmixing after democaising
+WNMF_params.NesterovUnmixing=false; % True to use Nesterov as unmixing method for all the 2-stage approaces; False, nfindr with Least Squares will be used instead
+WNMF_params.NesterovScaling=15; % To control sum-to-one constraint
+% Parameters for GRMR
+GRMR_params.offset=5;
+GRMR_params.maxIter=5; %was 20
+GRMR_params.sgm2=1e1;
+GRMR_params.gamma=0.2; % was 0.2 and modified by Kinan
+GRMR_params.rank_sel=2;
+
+
+Test_naive_method=false;
+if(Test_naive_method==true)
+    [mean_PSNR]=evaluate_on_CAVE_Demosaicing_naive_method(num_band,sz,smp_scenario,num_obs_pxl,WNMF_params,dataset_size);
+    fprintf('\n');
+    fprintf('Method  D_PSNR  \n');
+    fprintf('GMRM   | %.1f   \n',mean_PSNR(1));
+    fprintf('BTES   | %.1f   \n',mean_PSNR(2));
+
+else
+    if(unmixing==true)
+        % Run the expirement
+        [mean_PSNR,mean_SAM,exec_time,std_PSNSR,std_SAM,mean_MSE,mean_SIR,mean_MER,mean_U_PSNR,mean_SSIM,mean_RMSE,mean_MRSA]=evaluate_on_CAVE_Demosaicing_and_Unmixing(num_band,sz,smp_scenario,num_obs_pxl,GRMR_params,WNMF_params,unmixing,dataset_size);
+        
+        % Showing the results
+        fprintf('\n');
+        fprintf('Method | U_PSNR | D_PSNR | SAM  | MSE       | RMSE | SSIM | SIR  | MER  | Time | MRSA \n');
+        fprintf('GMRM   | %.1f   | %.1f   | %.2f | %.2f      | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f \n',mean_U_PSNR(1),mean_PSNR(1),mean_SAM(1),mean_MSE(1),mean_RMSE(1),mean_SSIM(1),mean_SIR(1),mean_MER(1),exec_time(1),mean_MRSA(1));
+        fprintf('BTES   | %.1f   | %.1f   | %.2f | %.2f      | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f \n',mean_U_PSNR(2),mean_PSNR(2),mean_SAM(2),mean_MSE(2),mean_RMSE(2),mean_SSIM(2),mean_SIR(2),mean_MER(2),exec_time(2),mean_MRSA(2));
+        fprintf('WB     | %.1f   | %.1f   | %.2f | %.2f      | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f \n',mean_U_PSNR(3),mean_PSNR(3),mean_SAM(3),mean_MSE(3),mean_RMSE(3),mean_SSIM(3),mean_SIR(3),mean_MER(3),exec_time(3),mean_MRSA(3));
+        fprintf('PPID   | %.1f   | %.1f   | %.2f | %.2f      | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f \n',mean_U_PSNR(4),mean_PSNR(4),mean_SAM(4),mean_MSE(4),mean_RMSE(4),mean_SSIM(4),mean_SIR(4),mean_MER(4),exec_time(4),mean_MRSA(4));
+        fprintf('ItSD   | %.1f   | %.1f   | %.2f | %.2f      | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f \n',mean_U_PSNR(5),mean_PSNR(5),mean_SAM(5),mean_MSE(5),mean_RMSE(5),mean_SSIM(5),mean_SIR(5),mean_MER(5),exec_time(5),mean_MRSA(5));
+        fprintf('KPWNMF | %.1f   | %.1f   | %.2f | %.2f      | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f \n',mean_U_PSNR(6),mean_PSNR(6),mean_SAM(6),mean_MSE(6),mean_RMSE(6),mean_SSIM(6),mean_SIR(6),mean_MER(6),exec_time(6),mean_MRSA(6));
+        fprintf('VCA_PWNMF  | %.1f   | %.1f   | %.2f | %.2f      | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f \n',mean_U_PSNR(7),mean_PSNR(7),mean_SAM(7),mean_MSE(7),mean_RMSE(7),mean_SSIM(7),mean_SIR(7),mean_MER(7),exec_time(7),mean_MRSA(7));
+    else
+        [mean_PSNR]=evaluate_on_CAVE_Demosaicing(num_band,sz,smp_scenario,num_obs_pxl,GRMR_params,WNMF_params,dataset_size);
+        fprintf('\n');
+        fprintf('Method  D_PSNR  \n');
+        fprintf('GMRM   | %.1f   \n',mean_PSNR(1));
+        fprintf('BTES   | %.1f   \n',mean_PSNR(2));
+        fprintf('WB     | %.1f   \n',mean_PSNR(3));
+        fprintf('PPID   | %.1f   \n',mean_PSNR(4));
+        fprintf('ItSD   | %.1f   \n',mean_PSNR(5));
+        fprintf('KPWNMF | %.1f   \n',mean_PSNR(6));
+        %     fprintf('Naive  | %.1f   \n',mean_PSNR(7));
+    end
+end
+
+
